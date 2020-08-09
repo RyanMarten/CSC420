@@ -2,34 +2,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 import open3d as o3d
+import os.path
+from os import path
 
 """# Part I: Projection
 
 ## Q1) 3-D Point Cloud
 """
 
-# Non interactive Mode
-
+# read in the images and the depth maps
 rgb_im_1 = plt.imread("Part1/1/rgbImage.jpg")
 rgb_im_2 = plt.imread("Part1/2/rgbImage.jpg")
 rgb_im_3 = plt.imread("Part1/3/rgbImage.jpg")
 depth_im_1 = plt.imread("Part1/1/depthImage.png")
 depth_im_2 = plt.imread("Part1/2/depthImage.png")
 depth_im_3 = plt.imread("Part1/3/depthImage.png")
-
-"""
-fig, ax = plt.subplots(2, 3, figsize=(12,6))
-ax[0][0].imshow(rgb_im_1)
-ax[0][1].imshow(rgb_im_2)
-ax[0][2].imshow(rgb_im_3)
-ax[1][0].imshow(depth_im_1)
-ax[1][1].imshow(depth_im_2)
-ax[1][2].imshow(depth_im_3)
-fig.tight_layout()
-ax[0][1].set_title("input images and depths", fontsize=15)
-plt.ioff()
-plt.show()
-"""
 
 # Read in the instrinsic and extrinsic parameters
 ext_im_1 = np.loadtxt("Part1/1/extrinsic.txt")
@@ -43,12 +30,6 @@ int_im_3 = np.loadtxt("Part1/3/intrinsics.txt")
 print("Extrinsic Camera Parameters: \n", ext_im_1)
 print("\nInstrinsic Camera Parameters: \n", int_im_2)
 
-# working with image 1 first
-k = int_im_1
-x = 20
-y = 100
-rgb_im = rgb_im_1
-depth_im = depth_im_1
 
 def compute_point_cloud(rgb_im, depth_im, x, y, k):
   """ Computes world coordinates of pixels from the depth map provided 
@@ -68,31 +49,26 @@ def compute_point_cloud(rgb_im, depth_im, x, y, k):
   r_n, g_n, b_n = rgb_im[x,y]
   return x_n, y_n, z_n, r_n, g_n, b_n
 
-print(compute_point_cloud(rgb_im, depth_im, x, y, k))
-
-rgbd_im_1 = np.zeros((rgb_im.shape[0], rgb_im.shape[1], 4))
-
 xyz = []
 rgb = []
 
-"""
-# THIS IS CORRECT!
-with open("test.xyzrgb", "w") as f: 
-  for i in range(rgb_im.shape[0]):
-    for j in range(rgb_im.shape[1]):
-      x,y,z,r,g,b = compute_point_cloud(rgb_im_1, depth_im_1, i, j, k)
-      r /= 255
-      g /= 255
-      b /= 255
-      xyz.append([x,y,z])
-      rgb.append([r,g,b])
-      f.write(f"{x} {y} {z} {r} {g} {b}\n")
-"""
+if not path.exists("im1.xyzrgb"):
+  print("Creating XYZRGB file")
+  with open("im1.xyzrgb", "w") as f: 
+    for i in range(rgb_im_1.shape[0]):
+      for j in range(rgb_im_1.shape[1]):
+        x,y,z,r,g,b = compute_point_cloud(rgb_im_1, depth_im_1, i, j, k=int_im_1)
+        r /= 255
+        g /= 255
+        b /= 255
+        xyz.append([x,y,z])
+        rgb.append([r,g,b])
+        f.write(f"{x} {y} {z} {r} {g} {b}\n")
 
 print("Load a ply point cloud, print it, and render it")
-pcd = o3d.io.read_point_cloud("test.xyzrgb", format="xyzrgb")
+pcd = o3d.io.read_point_cloud("im1.xyzrgb", format="xyzrgb")
 print(pcd)
-# print(np.asarray(pcd.points))
+print(np.asarray(pcd.points))
 o3d.visualization.draw_geometries([pcd])
 
 downpcd = pcd.voxel_down_sample(voxel_size=0.005)
