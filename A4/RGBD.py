@@ -5,11 +5,6 @@ import open3d as o3d
 import os.path
 from os import path
 
-"""# Part I: Projection
-
-## Q1) 3-D Point Cloud
-"""
-
 # read in the images and the depth maps
 rgb_im_1 = plt.imread("Part1/1/rgbImage.jpg")
 depth_im_1 = plt.imread("Part1/1/depthImage.png")
