@@ -31,8 +31,8 @@ print("Extrinsic Camera Parameters: \n", ext_im_1)
 print("\nInstrinsic Camera Parameters: \n", int_im_2)
 
 
-def compute_point_cloud(rgb_im, depth_im, x, y, k):
-  """ Computes world coordinates of pixels from the depth map provided 
+def compute_point_cloud_camera(rgb_im, depth_im, x, y, k):
+  """ Computes camera coordinates of pixels from the depth map provided 
 
   Parameters: 
     - rgb_im (RGB image)
@@ -52,14 +52,14 @@ def compute_point_cloud(rgb_im, depth_im, x, y, k):
 xyz = []
 rgb = []
 
-testing = False
+testing = True
 
-if not path.exists("im1.xyzrgb") or testing:
+if not path.exists("im1_camera.xyzrgb") or testing:
   print("Creating XYZRGB file")
-  with open("im1.xyzrgb", "w") as f: 
+  with open("im1_camera.xyzrgb", "w") as f: 
     for i in range(rgb_im_1.shape[0]):
       for j in range(rgb_im_1.shape[1]):
-        x,y,z,r,g,b = compute_point_cloud(rgb_im_1, depth_im_1, j, i, k=int_im_1)
+        x,y,z,r,g,b = compute_point_cloud_camera(rgb_im_1, depth_im_1, j, i, k=int_im_1)
         r /= 255
         g /= 255
         b /= 255
@@ -68,7 +68,7 @@ if not path.exists("im1.xyzrgb") or testing:
         f.write(f"{x} {y} {z} {r} {g} {b}\n")
 
 print("Load a ply point cloud, print it, and render it")
-pcd = o3d.io.read_point_cloud("im1.xyzrgb", format="xyzrgb")
+pcd = o3d.io.read_point_cloud("im1_camera.xyzrgb", format="xyzrgb")
 print(pcd)
 print(np.asarray(pcd.points))
 
@@ -79,3 +79,41 @@ o3d.visualization.draw_geometries([pcd])
 # Downsample Visualization (Just for fun)
 # downpcd = pcd.voxel_down_sample(voxel_size=0.005)
 # o3d.visualization.draw_geometries([downpcd])
+
+# Not sure about the world coordinates. Not sure what the extrinsic matrix is 
+# the definitition is strange to me. Im going to work with camera coodinates instead of wolrd 
+# coordinates for now
+def compute_point_cloud_world(rgb_im, depth_im, x, y, k, ext):
+    """ Computes world coordinates of pixels from the depth map provided 
+
+    Parameters: 
+      - rgb_im (RGB image)
+      - depth_im (Depth map image)
+      - k (camera calibration matrix)
+      - ext (extrinsic parameters)
+      - x, y (pixel location)
+
+    Returns: (X,Y,Z,R,G,B)
+    """
+    # Inverse camera projection from image plane to camera coodinates
+    q = np.array([x, y, 1]) * depth_im[y, x]
+    Q = np.matmul(np.linalg.inv(k), q)
+
+    # Conversion from camera coordinates to world coordinates
+    Q_h = np.zeros((4,1))
+    Q_h[3] = 1
+    Q_h[:3] = np.reshape(Q, (3,1))
+
+    # ext_m = np.zeros((4,4))
+    # ext_m[3,3] = 1
+    # ext_m[:3, :] = ext
+    ext_h = ext
+
+    W = np.matmul(ext_h, Q_h)
+
+    x_n, y_n, z_n = W
+    # x_n /= h
+    # y_n /= h
+    # z_n /= h
+    r_n, g_n, b_n = rgb_im[y, x]
+    return x_n, y_n, z_n, r_n, g_n, b_n
