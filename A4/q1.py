@@ -52,10 +52,10 @@ def compute_point_cloud_camera(rgb_im, depth_im, x, y, k):
 xyz = []
 rgb = []
 
-testing = True
+testing = False
 
 if not path.exists("im1_camera.xyzrgb") or testing:
-  print("Creating XYZRGB file")
+  print("Creating Camera XYZRGB file")
   with open("im1_camera.xyzrgb", "w") as f: 
     for i in range(rgb_im_1.shape[0]):
       for j in range(rgb_im_1.shape[1]):
@@ -80,9 +80,11 @@ o3d.visualization.draw_geometries([pcd])
 # downpcd = pcd.voxel_down_sample(voxel_size=0.005)
 # o3d.visualization.draw_geometries([downpcd])
 
-# Not sure about the world coordinates. Not sure what the extrinsic matrix is 
-# the definitition is strange to me. Im going to work with camera coodinates instead of wolrd 
-# coordinates for now
+ext_im_1_real = np.zeros((4,4))
+ext_im_1_real[:3, :] = ext_im_1
+ext_im_1_real[3,3] = 1
+print("Extrinsic Camera Parameters: \n", ext_im_1_real)
+
 def compute_point_cloud_world(rgb_im, depth_im, x, y, k, ext):
     """ Computes world coordinates of pixels from the depth map provided 
 
@@ -97,23 +99,50 @@ def compute_point_cloud_world(rgb_im, depth_im, x, y, k, ext):
     """
     # Inverse camera projection from image plane to camera coodinates
     q = np.array([x, y, 1]) * depth_im[y, x]
-    Q = np.matmul(np.linalg.inv(k), q)
+    c = np.matmul(np.linalg.inv(k), q)
 
     # Conversion from camera coordinates to world coordinates
-    Q_h = np.zeros((4,1))
-    Q_h[3] = 1
-    Q_h[:3] = np.reshape(Q, (3,1))
+    c_h = np.zeros((4,1))
+    c_h[3] = 1
+    c_h[:3] = np.reshape(c, (3,1))
 
-    # ext_m = np.zeros((4,4))
-    # ext_m[3,3] = 1
-    # ext_m[:3, :] = ext
-    ext_h = ext
+    W =  np.matmul(np.linalg.inv(ext), c_h)
 
-    W = np.matmul(ext_h, Q_h)
+    x_n = W[0][0]
+    y_n = W[1][0]
+    z_n = W[2][0]
+    h = W[3][0]
 
-    x_n, y_n, z_n = W
+    # h is always 1
     # x_n /= h
     # y_n /= h
     # z_n /= h
     r_n, g_n, b_n = rgb_im[y, x]
     return x_n, y_n, z_n, r_n, g_n, b_n
+
+xyz = []
+rgb = []
+
+testing = False
+
+if not path.exists("im1_world.xyzrgb") or testing:
+  print("Creating World XYZRGB file")
+  with open("im1_world.xyzrgb", "w") as f: 
+    for i in range(rgb_im_1.shape[0]):
+      for j in range(rgb_im_1.shape[1]):
+        x,y,z,r,g,b = compute_point_cloud_world(rgb_im_1, depth_im_1, j, i, k=int_im_1, ext=ext_im_1_real)
+        r /= 255
+        g /= 255
+        b /= 255
+        xyz.append([x,y,z])
+        rgb.append([r,g,b])
+        f.write(f"{x} {y} {z} {r} {g} {b}\n")
+
+print("Load a ply point cloud, print it, and render it")
+pcd = o3d.io.read_point_cloud("im1_world.xyzrgb", format="xyzrgb")
+print(pcd)
+print(np.asarray(pcd.points))
+
+# Flip it, otherwise the pointcloud will be upside down
+pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
+o3d.visualization.draw_geometries([pcd])
