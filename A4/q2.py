@@ -55,8 +55,7 @@ rgb = []
 
 for i in range(rgb_im_1.shape[0]):
     for j in range(rgb_im_1.shape[1]):
-        x, y, z, r, g, b = compute_point_cloud_camera(
-            rgb_im_1, depth_im_1, j, i, k=int_im_1)
+        x, y, z, r, g, b = compute_point_cloud_camera(rgb_im_1, depth_im_1, j, i, k=int_im_1)
         xyz.append([x, y, z])
         rgb.append([r, g, b])
 
@@ -68,29 +67,76 @@ def projection_to_image_plane(xyz, rgb, rgb_im, k):
         point = xyz[i]
         color = rgb[i]
         projected_point = np.matmul(k, point)
-        projected_point /= projected_point[2]
+        if (projected_point[2] != 0):
+          projected_point /= projected_point[2]
 
-        if 0 <= projected_point[1] < im.shape[0] and 0 <= projected_point[0] < im.shape[1]:
+        if 0 <= projected_point[1] < im.shape[0]-1 and 0 <= projected_point[0] < im.shape[1]-1:
             im[int(round(projected_point[1])), int(round(projected_point[0]))] = color
 
     return im
-
 
 projected = projection_to_image_plane(xyz, rgb, rgb_im_1, int_im_1)
 plt.imshow(projected)
 plt.show()
 
-'''
+
+def rotation_around_axis(x, y, z, theta, axis):
+    """ Rotates 3D Scene Point theta = omega*t radians around specific axis
+    [X', Y', Z'] = R[X, Y, Z], Where R is the rotation matrix
+
+    Parameters: 
+    - theta (rotation in radians)
+    - t (time steps)
+    - axis (x=0, y=1, z=3)
+
+    Returns: rotated points (X',Y',Z')
+    """
+    p = np.array([x,y,z])
+
+    if axis=="x":
+      R = np.array([[1, 0, 0],
+                   [0, np.cos(theta), -np.sin(theta)],
+                    [0, np.sin(theta), np.cos(theta)]])
+      
+      rotated = np.matmul(R, p)
+  
+    return rotated
+
+xyz_r = []
+
+for i in range(len(xyz)): #range(1): #
+    x, y, z = xyz[i]
+    x_r, y_r, z_r = rotation_around_axis(x, y, z, theta=0.7, axis="x")
+    xyz_r.append([x_r, y_r, z_r])
+
+rotated_and_projected = projection_to_image_plane(xyz_r, rgb, rgb_im_1, int_im_1)
+plt.imshow(rotated_and_projected)
+plt.show()
+
+
+testing = True
+if not path.exists("im1_rotated.xyzrgb") or testing:
+    print("Creating XYZRGB file")
+    with open("im1_rotated.xyzrgb", "w") as f: 
+        for i in range(len(xyz_r)): 
+            x, y, z = xyz_r[i]
+            r = rgb[i][0] / 255 
+            g = rgb[i][1] / 255 
+            b = rgb[i][2] / 255 
+            f.write(f"{x} {y} {z} {r} {g} {b}\n")
+
+
 print("Load a ply point cloud, print it, and render it")
-pcd = o3d.io.read_point_cloud("im1_camera.xyzrgb", format="xyzrgb")
+pcd = o3d.io.read_point_cloud("im1_rotated.xyzrgb", format="xyzrgb")
 print(pcd)
 pcd_points = np.asarray(pcd.points)
 print(pcd_points.shape)
 
 # Flip it, otherwise the pointcloud will be upside down
 pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
-# o3d.visualization.draw_geometries([pcd])
+o3d.visualization.draw_geometries([pcd])
 
+'''
 def projection_to_image_plane(pcd, rgb_im, k):
     pcd_points = np.asarray(pcd.points)
     pcd_colors = np.asarray(pcd.colors)
