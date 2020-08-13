@@ -30,6 +30,12 @@ int_im_3 = np.loadtxt("Part1/3/intrinsics.txt")
 print("Extrinsic Camera Parameters: \n", ext_im_1)
 print("\nInstrinsic Camera Parameters: \n", int_im_2)
 
+# changing things up 
+## THIS IS SO I CAN SEE THE RESULTS ON THE OTHER IMAGES!!!!
+rgb_im_1 = rgb_im_3
+depth_im_1 = depth_im_3
+ext_im_1 = ext_im_3
+int_im_1 = int_im_3
 
 def compute_point_cloud_camera(rgb_im, depth_im, x, y, k):
   """ Computes camera coordinates of pixels from the depth map provided 
@@ -52,7 +58,7 @@ def compute_point_cloud_camera(rgb_im, depth_im, x, y, k):
 xyz = []
 rgb = []
 
-testing = False
+testing = True
 
 if not path.exists("im1_camera.xyzrgb") or testing:
   print("Creating Camera XYZRGB file")
@@ -123,7 +129,7 @@ def compute_point_cloud_world(rgb_im, depth_im, x, y, k, ext):
 xyz = []
 rgb = []
 
-testing = False
+testing = True
 
 if not path.exists("im1_world.xyzrgb") or testing:
   print("Creating World XYZRGB file")
