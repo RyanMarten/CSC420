@@ -59,13 +59,13 @@ plt.show()
 plt.imshow(pair2_1)
 for quad in [p21_monitor, p21_phone]:
     for i in range(4):
-        plt.plot(quad[i][0],quad[i][1], "r.", markersize=10)
+        plt.plot(quad[i][0],quad[i][1], "m.", markersize=10)
 plt.show()
 
 plt.imshow(pair2_2)
 for quad in [p22_monitor, p22_phone]:
     for i in range(4):
-        plt.plot(quad[i][0],quad[i][1], "r.", markersize=10)
+        plt.plot(quad[i][0],quad[i][1], "m.", markersize=10)
 plt.show()
 
 _ = print("Size of Images:", pair1_1.shape) # all are the same size
