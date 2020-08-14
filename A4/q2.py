@@ -49,16 +49,28 @@ def compute_point_cloud_camera(rgb_im, depth_im, x, y, k):
     r_n, g_n, b_n = rgb_im[y, x]
     return x_n, y_n, z_n, r_n, g_n, b_n
 
-
 xyz = []
 rgb = []
 
-for i in range(rgb_im_1.shape[0]):
-    for j in range(rgb_im_1.shape[1]):
-        x, y, z, r, g, b = compute_point_cloud_camera(rgb_im_1, depth_im_1, j, i, k=int_im_1)
-        xyz.append([x, y, z])
-        rgb.append([r, g, b])
+testing = True
 
+if not path.exists("im1_camera.xyzrgb") or testing:
+  print("Creating Camera XYZRGB file")
+  with open("im1_camera.xyzrgb", "w") as f: 
+    for i in range(rgb_im_1.shape[0]):
+      for j in range(rgb_im_1.shape[1]):
+        x,y,z,r,g,b = compute_point_cloud_camera(rgb_im_1, depth_im_1, j, i, k=int_im_1)
+        r /= 255
+        g /= 255
+        b /= 255
+        xyz.append([x,y,z])
+        rgb.append([r,g,b])
+        f.write(f"{x} {y} {z} {r} {g} {b}\n")
+
+print("Rendering original camera coords")
+pcd = o3d.io.read_point_cloud("im1_camera.xyzrgb", format="xyzrgb")
+pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
+o3d.visualization.draw_geometries([pcd])
 
 def projection_to_image_plane(xyz, rgb, rgb_im, k):
     im = np.zeros_like(rgb_im)
@@ -75,63 +87,65 @@ def projection_to_image_plane(xyz, rgb, rgb_im, k):
 
     return im
 
-projected = projection_to_image_plane(xyz, rgb, rgb_im_1, int_im_1)
-plt.imshow(projected)
-plt.show()
-
+# projected = projection_to_image_plane(xyz, rgb, rgb_im_1, int_im_1)
+# plt.imshow(projected)
+# plt.show()
 
 def rotation_around_axis(x, y, z, theta, axis):
-    """ Rotates 3D Scene Point theta = omega*t radians around specific axis
+    """ Rotates 3D Scene Point theta radians around specific axis
     [X', Y', Z'] = R[X, Y, Z], Where R is the rotation matrix
 
     Parameters: 
     - theta (rotation in radians)
-    - t (time steps)
     - axis (x=0, y=1, z=3)
 
     Returns: rotated points (X',Y',Z')
     """
     p = np.array([x,y,z])
+    cos = np.cos(theta)
+    sin = np.sin(theta)
 
     if axis=="x":
       R = np.array([[1, 0, 0],
-                   [0, np.cos(theta), -np.sin(theta)],
-                    [0, np.sin(theta), np.cos(theta)]])
-      
-      rotated = np.matmul(R, p)
-  
+                   [0, cos, -1*sin],
+                    [0, sin, cos]])
+
+    elif axis=="y":
+      R = np.array([[cos, 0, sin],
+                   [0, 1, 0],
+                    [-sin, 0, cos]])
+
+    elif axis=="z":
+      R = np.array([[cos, sin, 0],
+                   [sin, cos, 0],
+                    [0, 0, 1]])
+    
+    rotated = np.matmul(R, p)
     return rotated
 
-xyz_r = []
+xyz_rxax= []
 
-for i in range(len(xyz)): #range(1): #
+for i in range(len(xyz)):
     x, y, z = xyz[i]
-    x_r, y_r, z_r = rotation_around_axis(x, y, z, theta=0.7, axis="x")
-    xyz_r.append([x_r, y_r, z_r])
+    xyz_rxax.append(rotation_around_axis(x, y, z, theta=0.3, axis="x"))
 
-rotated_and_projected = projection_to_image_plane(xyz_r, rgb, rgb_im_1, int_im_1)
-plt.imshow(rotated_and_projected)
-plt.show()
+# rotated_and_projected = projection_to_image_plane(xyz_r, rgb, rgb_im_1, int_im_1)
+# plt.imshow(rotated_and_projected)
+# plt.show()
 
-
-testing = True
 if not path.exists("im1_rotated.xyzrgb") or testing:
     print("Creating XYZRGB file")
     with open("im1_rotated.xyzrgb", "w") as f: 
-        for i in range(len(xyz_r)): 
-            x, y, z = xyz_r[i]
-            r = rgb[i][0] / 255 
-            g = rgb[i][1] / 255 
-            b = rgb[i][2] / 255 
+        for i in range(len(xyz_rxax)): 
+            x, y, z = xyz_rxax[i]
+            r = rgb[i][0] 
+            g = rgb[i][1]
+            b = rgb[i][2] 
             f.write(f"{x} {y} {z} {r} {g} {b}\n")
 
 
-print("Load a ply point cloud, print it, and render it")
+print("Loading rotated point cloud")
 pcd = o3d.io.read_point_cloud("im1_rotated.xyzrgb", format="xyzrgb")
-print(pcd)
-pcd_points = np.asarray(pcd.points)
-print(pcd_points.shape)
-
 # Flip it, otherwise the pointcloud will be upside down
 pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
 o3d.visualization.draw_geometries([pcd])
